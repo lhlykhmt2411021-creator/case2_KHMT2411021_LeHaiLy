@@ -41,6 +41,20 @@ class ApiClient {
     );
   }
 
+  Future<Map<String, dynamic>> put(
+    String path, {
+    Map<String, dynamic>? body,
+    String? token,
+  }) {
+    return _send(
+      () => _client.put(
+        _uri(path),
+        headers: _headers(token),
+        body: jsonEncode(body ?? <String, dynamic>{}),
+      ),
+    );
+  }
+
   Uri _uri(String path) => Uri.parse('${ApiConstants.baseUrl}$path');
 
   Map<String, String> _headers(String? token) {
