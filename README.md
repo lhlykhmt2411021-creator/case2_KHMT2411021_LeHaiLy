@@ -1,7 +1,7 @@
 # Case Study 2 - Task Manager
 
 - MSSV: KHMT2411021
-- Ho ten: Le Hai Ly
+- Họ tên: Lê Hải Lý
 
 Ung dung quan ly va giao cong viec nhom, gom REST API Node.js/Express/MongoDB va ung dung Flutter.
 
