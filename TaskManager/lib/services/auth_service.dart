@@ -51,6 +51,12 @@ class AuthService {
     return AuthSession(token: token, user: User.fromJson(_asMap(data['user'])));
   }
 
+  Future<User> fetchCurrentUser(String token) async {
+    final Map<String, dynamic> data =
+        await _apiClient.get('/auth/me', token: token);
+    return User.fromJson(_asMap(data['user']));
+  }
+
   Future<String?> readToken() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString(tokenKey);
