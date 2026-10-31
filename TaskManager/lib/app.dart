@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'screens/auth/register_screen.dart';
+import 'screens/auth/login_screen.dart';
 import 'services/auth_service.dart';
 
 class TaskManagerApp extends StatelessWidget {
@@ -19,7 +19,7 @@ class TaskManagerApp extends StatelessWidget {
         colorSchemeSeed: Colors.indigo,
         useMaterial3: true,
       ),
-      home: RegisterScreen(authService: service),
+      home: LoginScreen(authService: service),
     );
   }
 }

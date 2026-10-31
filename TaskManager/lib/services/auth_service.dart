@@ -3,6 +3,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import 'api_client.dart';
 
+class AuthSession {
+  const AuthSession({required this.token, required this.user});
+
+  final String token;
+  final User user;
+}
+
 class AuthService {
   AuthService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
 
@@ -24,6 +31,24 @@ class AuthService {
       },
     );
     return User.fromJson(_asMap(data['user']));
+  }
+
+  Future<AuthSession> login({
+    required String email,
+    required String password,
+  }) async {
+    final Map<String, dynamic> data = await _apiClient.post(
+      '/auth/login',
+      body: <String, dynamic>{'email': email, 'password': password},
+    );
+
+    final String token = data['token'] as String? ?? '';
+    if (token.isEmpty) {
+      throw const ApiException('Không nhận được token đăng nhập');
+    }
+
+    await saveToken(token);
+    return AuthSession(token: token, user: User.fromJson(_asMap(data['user'])));
   }
 
   Future<String?> readToken() async {
