@@ -1,15 +1,18 @@
 const express = require('express');
+const authRoutes = require('./routes/authRoutes');
+const { notFoundHandler, errorMiddleware } = require('./middleware/errorMiddleware');
 
 const app = express();
 
 app.use(express.json());
 
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ message: 'Task Manager API is running' });
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'Task Manager API đang chạy' });
 });
 
-app.use((req, res) => {
-  res.status(404).json({ message: 'Khong tim thay endpoint' });
-});
+app.use('/api/auth', authRoutes);
+
+app.use(notFoundHandler);
+app.use(errorMiddleware);
 
 module.exports = app;

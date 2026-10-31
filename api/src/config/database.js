@@ -8,6 +8,7 @@ async function connectDatabase() {
   }
 
   await mongoose.connect(MONGODB_URI);
+  console.log(`Da ket noi MongoDB: ${mongoose.connection.host}/${mongoose.connection.name}`);
 }
 
 module.exports = { connectDatabase };
