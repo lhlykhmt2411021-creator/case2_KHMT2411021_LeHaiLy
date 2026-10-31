@@ -61,4 +61,8 @@ async function login(req, res, next) {
   }
 }
 
-module.exports = { register, login };
+async function me(req, res) {
+  return res.status(200).json({ user: req.user.toPublicJSON() });
+}
+
+module.exports = { register, login, me };
