@@ -1,7 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const { validateRegisterInput, validateLoginInput } = require('../validators/authValidator');
+const { validateRegisterInput, validateLoginInput, validateUpdateProfileInput } =
+  require('../validators/authValidator');
 
 const DUPLICATE_EMAIL_MESSAGE = 'Email đã được sử dụng';
 const INVALID_CREDENTIALS_MESSAGE = 'Email hoặc mật khẩu không đúng';
@@ -65,4 +66,21 @@ async function me(req, res) {
   return res.status(200).json({ user: req.user.toPublicJSON() });
 }
 
-module.exports = { register, login, me };
+async function updateMe(req, res, next) {
+  try {
+    const { value, error } = validateUpdateProfileInput(req.body);
+    if (error) {
+      return res.status(400).json({ message: error });
+    }
+
+    req.user.fullName = value.fullName;
+    req.user.avatarUrl = value.avatarUrl;
+    await req.user.save();
+
+    return res.status(200).json({ user: req.user.toPublicJSON() });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+module.exports = { register, login, me, updateMe };
