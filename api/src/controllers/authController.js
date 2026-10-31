@@ -1,9 +1,17 @@
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const { validateRegisterInput } = require('../validators/authValidator');
+const { validateRegisterInput, validateLoginInput } = require('../validators/authValidator');
 
 const DUPLICATE_EMAIL_MESSAGE = 'Email đã được sử dụng';
+const INVALID_CREDENTIALS_MESSAGE = 'Email hoặc mật khẩu không đúng';
 const SALT_ROUNDS = 10;
+
+function signToken(user) {
+  return jwt.sign({ sub: user._id.toString() }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  });
+}
 
 async function register(req, res, next) {
   try {
@@ -33,4 +41,24 @@ async function register(req, res, next) {
   }
 }
 
-module.exports = { register };
+async function login(req, res, next) {
+  try {
+    const { value, error } = validateLoginInput(req.body);
+    if (error) {
+      return res.status(400).json({ message: error });
+    }
+
+    const user = await User.findOne({ email: value.email });
+    const isPasswordValid = user ? await bcrypt.compare(value.password, user.passwordHash) : false;
+
+    if (!user || !isPasswordValid) {
+      return res.status(401).json({ message: INVALID_CREDENTIALS_MESSAGE });
+    }
+
+    return res.status(200).json({ token: signToken(user), user: user.toPublicJSON() });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+module.exports = { register, login };

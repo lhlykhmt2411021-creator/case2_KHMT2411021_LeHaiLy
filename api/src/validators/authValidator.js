@@ -22,4 +22,15 @@ function validateRegisterInput(body = {}) {
   return { value: { fullName, email, password } };
 }
 
-module.exports = { EMAIL_REGEX, normalizeEmail, validateRegisterInput };
+function validateLoginInput(body = {}) {
+  const email = normalizeEmail(body.email);
+  const password = typeof body.password === 'string' ? body.password : '';
+
+  if (!email || !password) {
+    return { error: 'Vui lòng nhập email và mật khẩu' };
+  }
+
+  return { value: { email, password } };
+}
+
+module.exports = { EMAIL_REGEX, normalizeEmail, validateRegisterInput, validateLoginInput };
