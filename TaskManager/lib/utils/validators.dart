@@ -1,0 +1,43 @@
+class Validators {
+  Validators._();
+
+  static final RegExp _emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+
+  static String? fullName(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Vui lòng nhập họ tên';
+    }
+    return null;
+  }
+
+  static String? email(String? value) {
+    final String email = value?.trim() ?? '';
+    if (email.isEmpty) {
+      return 'Vui lòng nhập email';
+    }
+    if (!_emailRegex.hasMatch(email)) {
+      return 'Email không hợp lệ';
+    }
+    return null;
+  }
+
+  static String? password(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Vui lòng nhập mật khẩu';
+    }
+    if (value.length < 6) {
+      return 'Mật khẩu phải có ít nhất 6 ký tự';
+    }
+    return null;
+  }
+
+  static String? confirmPassword(String? value, String password) {
+    if (value == null || value.isEmpty) {
+      return 'Vui lòng xác nhận mật khẩu';
+    }
+    if (value != password) {
+      return 'Mật khẩu xác nhận không khớp';
+    }
+    return null;
+  }
+}
