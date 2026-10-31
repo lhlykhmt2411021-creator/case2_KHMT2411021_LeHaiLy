@@ -56,10 +56,28 @@ function validateUpdateProfileInput(body = {}) {
   return { value: { fullName, avatarUrl } };
 }
 
+function validateChangePasswordInput(body = {}) {
+  const currentPassword = typeof body.currentPassword === 'string' ? body.currentPassword : '';
+  const newPassword = typeof body.newPassword === 'string' ? body.newPassword : '';
+
+  if (!currentPassword) {
+    return { error: 'Vui lòng nhập mật khẩu hiện tại' };
+  }
+  if (newPassword.length < 6) {
+    return { error: 'Mật khẩu mới phải có ít nhất 6 ký tự' };
+  }
+  if (newPassword === currentPassword) {
+    return { error: 'Mật khẩu mới phải khác mật khẩu hiện tại' };
+  }
+
+  return { value: { currentPassword, newPassword } };
+}
+
 module.exports = {
   EMAIL_REGEX,
   normalizeEmail,
   validateRegisterInput,
   validateLoginInput,
   validateUpdateProfileInput,
+  validateChangePasswordInput,
 };

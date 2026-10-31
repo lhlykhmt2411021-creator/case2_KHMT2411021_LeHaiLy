@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const { validateRegisterInput, validateLoginInput, validateUpdateProfileInput } =
+const { validateRegisterInput, validateLoginInput, validateUpdateProfileInput, validateChangePasswordInput } =
   require('../validators/authValidator');
 
 const DUPLICATE_EMAIL_MESSAGE = 'Email đã được sử dụng';
@@ -83,4 +83,25 @@ async function updateMe(req, res, next) {
   }
 }
 
-module.exports = { register, login, me, updateMe };
+async function changePassword(req, res, next) {
+  try {
+    const { value, error } = validateChangePasswordInput(req.body);
+    if (error) {
+      return res.status(400).json({ message: error });
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(value.currentPassword, req.user.passwordHash);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ message: 'Mật khẩu hiện tại không đúng' });
+    }
+
+    req.user.passwordHash = await bcrypt.hash(value.newPassword, SALT_ROUNDS);
+    await req.user.save();
+
+    return res.status(200).json({ message: 'Đổi mật khẩu thành công' });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+module.exports = { register, login, me, updateMe, changePassword };
