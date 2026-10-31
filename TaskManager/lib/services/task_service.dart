@@ -24,7 +24,7 @@ class TaskService {
         await _apiClient.get('/tasks/$id', token: token);
     final Object? task = data['task'];
     if (task is! Map<String, dynamic>) {
-      throw const ApiException('KhÃ´ng Ä‘á»c Ä‘Æ°á»£c dá»¯ liá»‡u cÃ´ng viá»‡c');
+      throw const ApiException('Không đọc được dữ liệu công việc');
     }
     return Task.fromJson(task);
   }
@@ -32,7 +32,10 @@ class TaskService {
   Future<String> _requireToken() async {
     final String? token = await authService.readToken();
     if (token == null) {
-      throw const ApiException('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ xem cÃ´ng viá»‡c', statusCode: 401);
+      throw const ApiException(
+        'Bạn cần đăng nhập để xem công việc',
+        statusCode: 401,
+      );
     }
     return token;
   }
