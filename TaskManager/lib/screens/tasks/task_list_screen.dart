@@ -8,6 +8,7 @@ import '../../services/task_service.dart';
 import '../../widgets/loading_view.dart';
 import '../../widgets/task_card.dart';
 import '../auth/login_screen.dart';
+import '../profile/profile_screen.dart';
 import 'task_detail_screen.dart';
 
 class TaskListScreen extends StatefulWidget {
@@ -28,16 +29,14 @@ class _TaskListScreenState extends State<TaskListScreen> {
   late final TaskService _taskService =
       TaskService(authService: widget.authService);
 
-  Future<void> _logout() async {
-    await widget.authService.logout();
-    if (!mounted) {
-      return;
-    }
-    Navigator.of(context).pushAndRemoveUntil(
+  Future<void> _openProfile() async {
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => LoginScreen(authService: widget.authService),
+        builder: (_) => ProfileScreen(
+          authService: widget.authService,
+          user: widget.user,
+        ),
       ),
-      (Route<dynamic> route) => false,
     );
   }
 
@@ -49,10 +48,10 @@ class _TaskListScreenState extends State<TaskListScreen> {
         appBar: AppBar(
           title: const Text('Công việc'),
           actions: <Widget>[
-            TextButton.icon(
-              onPressed: _logout,
-              icon: const Icon(Icons.logout),
-              label: const Text('Đăng xuất'),
+            IconButton(
+              tooltip: 'Tài khoản',
+              onPressed: _openProfile,
+              icon: const Icon(Icons.person_outline),
             ),
           ],
           bottom: const TabBar(
