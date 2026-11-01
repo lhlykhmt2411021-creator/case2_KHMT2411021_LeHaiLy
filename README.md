@@ -62,6 +62,15 @@ Base URL: `http://localhost:3000/api`
 | POST | `/auth/register` | Đăng ký tài khoản (fullName, email, password) |
 | POST | `/auth/login` | Đăng nhập, trả `{ token, user }` |
 | GET | `/auth/me` | Lấy thông tin người dùng hiện tại (cần Bearer token) |
+| PUT | `/auth/me` | Cập nhật họ tên và ảnh đại diện (cần Bearer token) |
+| PUT | `/auth/change-password` | Đổi mật khẩu, cần `currentPassword` và `newPassword` (cần Bearer token) |
+
+### Người dùng
+
+| Method | Endpoint | Mô tả |
+| --- | --- | --- |
+| GET | `/users/search?q=` | Tìm người dùng theo họ tên hoặc email (tối đa 20 kết quả) |
+| GET | `/users/:id` | Xem thông tin công khai của một người dùng |
 
 ### Công việc
 
@@ -80,4 +89,3 @@ Các API công việc đều yêu cầu Bearer token. Người dùng chỉ đọ
 - Tìm kiếm, lọc, sắp xếp công việc
 - Thông báo trong ứng dụng và gửi email
 - Thống kê, lịch sử hoạt động
-- Cập nhật hồ sơ và đổi mật khẩu
