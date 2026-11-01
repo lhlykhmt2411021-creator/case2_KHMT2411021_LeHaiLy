@@ -57,6 +57,45 @@ class AuthService {
     return User.fromJson(_asMap(data['user']));
   }
 
+  Future<User> updateProfile({
+    required String fullName,
+    required String avatarUrl,
+  }) async {
+    final String token = await _requireToken();
+    final Map<String, dynamic> data = await _apiClient.put(
+      '/auth/me',
+      token: token,
+      body: <String, dynamic>{'fullName': fullName, 'avatarUrl': avatarUrl},
+    );
+    return User.fromJson(_asMap(data['user']));
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final String token = await _requireToken();
+    await _apiClient.put(
+      '/auth/change-password',
+      token: token,
+      body: <String, dynamic>{
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      },
+    );
+  }
+
+  Future<String> _requireToken() async {
+    final String? token = await readToken();
+    if (token == null) {
+      throw const ApiException(
+        'Bạn cần đăng nhập để thực hiện thao tác này',
+        statusCode: 401,
+      );
+    }
+    return token;
+  }
+
   Future<String?> readToken() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString(tokenKey);

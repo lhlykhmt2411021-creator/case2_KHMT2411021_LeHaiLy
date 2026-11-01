@@ -40,4 +40,16 @@ class Validators {
     }
     return null;
   }
+
+  static String? avatarUrl(String? value) {
+    final String url = value?.trim() ?? '';
+    if (url.isEmpty) {
+      return null;
+    }
+    final Uri? uri = Uri.tryParse(url);
+    if (uri == null || !(uri.isScheme('http') || uri.isScheme('https'))) {
+      return 'Đường dẫn ảnh phải bắt đầu bằng http hoặc https';
+    }
+    return null;
+  }
 }

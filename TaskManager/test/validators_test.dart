@@ -43,4 +43,21 @@ void main() {
       expect(Validators.confirmPassword('123456', '123456'), isNull);
     });
   });
+
+  group('Validators.avatarUrl', () {
+    test('hợp lệ khi để trống', () {
+      expect(Validators.avatarUrl(''), isNull);
+      expect(Validators.avatarUrl(null), isNull);
+    });
+
+    test('trả lỗi khi không phải http hoặc https', () {
+      expect(Validators.avatarUrl('abc'), isNotNull);
+      expect(Validators.avatarUrl('ftp://example.com/a.png'), isNotNull);
+    });
+
+    test('hợp lệ khi là đường dẫn http hoặc https', () {
+      expect(Validators.avatarUrl('https://example.com/a.png'), isNull);
+      expect(Validators.avatarUrl('http://example.com/a.png'), isNull);
+    });
+  });
 }
