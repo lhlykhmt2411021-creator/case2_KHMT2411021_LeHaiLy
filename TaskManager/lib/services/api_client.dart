@@ -55,6 +55,24 @@ class ApiClient {
     );
   }
 
+  Future<Map<String, dynamic>> patch(
+    String path, {
+    Map<String, dynamic>? body,
+    String? token,
+  }) {
+    return _send(
+      () => _client.patch(
+        _uri(path),
+        headers: _headers(token),
+        body: jsonEncode(body ?? <String, dynamic>{}),
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>> delete(String path, {String? token}) {
+    return _send(() => _client.delete(_uri(path), headers: _headers(token)));
+  }
+
   Uri _uri(String path) => Uri.parse('${ApiConstants.baseUrl}$path');
 
   Map<String, String> _headers(String? token) {

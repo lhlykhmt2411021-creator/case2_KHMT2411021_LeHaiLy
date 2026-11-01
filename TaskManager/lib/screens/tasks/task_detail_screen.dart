@@ -9,6 +9,7 @@ import '../../widgets/loading_view.dart';
 import '../../widgets/priority_badge.dart';
 import '../../widgets/status_badge.dart';
 import '../auth/login_screen.dart';
+import 'task_form_screen.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   const TaskDetailScreen({
@@ -28,6 +29,7 @@ class TaskDetailScreen extends StatefulWidget {
 
 class _TaskDetailScreenState extends State<TaskDetailScreen> {
   bool _loading = true;
+  bool _updating = false;
   String? _error;
   Task? _task;
 
@@ -36,6 +38,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     super.initState();
     _load();
   }
+
+  bool get _canEdit {
+    final String? role = _task?.role;
+    return role == 'creator' || role == 'editor';
+  }
+
+  bool get _canChangeStatus => _canEdit || _task?.role == 'assignee';
+
+  bool get _canDelete => _task?.role == 'creator';
 
   Future<void> _load() async {
     setState(() {
@@ -76,11 +87,191 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     }
   }
 
+  Future<void> _openEdit() async {
+    final Task? task = _task;
+    if (task == null) {
+      return;
+    }
+
+    final bool? changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => TaskFormScreen(
+          taskService: widget.taskService,
+          task: task,
+        ),
+      ),
+    );
+
+    if (changed == true && mounted) {
+      await _load();
+      _showMessage('Đã cập nhật công việc');
+    }
+  }
+
+  Future<void> _changeStatus() async {
+    final Task? task = _task;
+    if (task == null) {
+      return;
+    }
+
+    final TaskStatus? selected = await showModalBottomSheet<TaskStatus>(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Đổi trạng thái công việc'),
+              ),
+              ...TaskStatus.values.map(
+                (TaskStatus status) => ListTile(
+                  leading: Icon(
+                    status == task.status
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                  ),
+                  title: Text(status.label),
+                  onTap: () => Navigator.of(context).pop(status),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == null || selected == task.status) {
+      return;
+    }
+
+    setState(() => _updating = true);
+    try {
+      await widget.taskService.updateStatus(task.id, selected);
+      if (!mounted) {
+        return;
+      }
+      await _load();
+      _showMessage('Đã đổi trạng thái');
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      _showMessage(error.message);
+    } finally {
+      if (mounted) {
+        setState(() => _updating = false);
+      }
+    }
+  }
+
+  Future<void> _delete() async {
+    final Task? task = _task;
+    if (task == null) {
+      return;
+    }
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Xóa công việc'),
+          content: Text('Bạn có chắc muốn xóa công việc "${task.title}"?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Xóa'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    setState(() => _updating = true);
+    try {
+      await widget.taskService.deleteTask(task.id);
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop(true);
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _updating = false);
+      _showMessage(error.message);
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Chi tiết công việc')),
-      body: _buildBody(context),
+      appBar: AppBar(
+        title: const Text('Chi tiết công việc'),
+        actions: <Widget>[
+          if (_task != null && (_canEdit || _canChangeStatus || _canDelete))
+            PopupMenuButton<String>(
+              tooltip: 'Thao tác',
+              onSelected: (String value) {
+                switch (value) {
+                  case 'edit':
+                    _openEdit();
+                    break;
+                  case 'status':
+                    _changeStatus();
+                    break;
+                  case 'delete':
+                    _delete();
+                    break;
+                }
+              },
+              itemBuilder: (BuildContext context) {
+                return <PopupMenuEntry<String>>[
+                  if (_canEdit)
+                    const PopupMenuItem<String>(
+                      value: 'edit',
+                      child: Text('Chỉnh sửa công việc'),
+                    ),
+                  if (_canChangeStatus)
+                    const PopupMenuItem<String>(
+                      value: 'status',
+                      child: Text('Đổi trạng thái'),
+                    ),
+                  if (_canDelete)
+                    const PopupMenuItem<String>(
+                      value: 'delete',
+                      child: Text('Xóa công việc'),
+                    ),
+                ];
+              },
+            ),
+        ],
+      ),
+      body: Stack(
+        children: <Widget>[
+          _buildBody(context),
+          if (_updating)
+            const Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: LinearProgressIndicator(),
+            ),
+        ],
+      ),
     );
   }
 
