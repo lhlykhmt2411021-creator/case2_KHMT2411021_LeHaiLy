@@ -10,6 +10,7 @@ import '../../widgets/task_card.dart';
 import '../auth/login_screen.dart';
 import '../profile/profile_screen.dart';
 import 'task_detail_screen.dart';
+import 'task_form_screen.dart';
 
 class TaskListScreen extends StatefulWidget {
   const TaskListScreen({
@@ -28,6 +29,13 @@ class TaskListScreen extends StatefulWidget {
 class _TaskListScreenState extends State<TaskListScreen> {
   late final TaskService _taskService =
       TaskService(authService: widget.authService);
+  final ValueNotifier<int> _refreshSignal = ValueNotifier<int>(0);
+
+  @override
+  void dispose() {
+    _refreshSignal.dispose();
+    super.dispose();
+  }
 
   Future<void> _openProfile() async {
     await Navigator.of(context).push(
@@ -38,6 +46,21 @@ class _TaskListScreenState extends State<TaskListScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openCreateTask() async {
+    final bool? created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => TaskFormScreen(taskService: _taskService),
+      ),
+    );
+
+    if (created == true && mounted) {
+      _refreshSignal.value += 1;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã tạo công việc')),
+      );
+    }
   }
 
   @override
@@ -68,18 +91,26 @@ class _TaskListScreenState extends State<TaskListScreen> {
               scope: 'created',
               taskService: _taskService,
               authService: widget.authService,
+              refreshSignal: _refreshSignal,
             ),
             _TaskListView(
               scope: 'assigned',
               taskService: _taskService,
               authService: widget.authService,
+              refreshSignal: _refreshSignal,
             ),
             _TaskListView(
               scope: 'shared',
               taskService: _taskService,
               authService: widget.authService,
+              refreshSignal: _refreshSignal,
             ),
           ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _openCreateTask,
+          icon: const Icon(Icons.add),
+          label: const Text('Thêm công việc'),
         ),
       ),
     );
@@ -91,11 +122,13 @@ class _TaskListView extends StatefulWidget {
     required this.scope,
     required this.taskService,
     required this.authService,
+    required this.refreshSignal,
   });
 
   final String scope;
   final TaskService taskService;
   final AuthService authService;
+  final Listenable refreshSignal;
 
   @override
   State<_TaskListView> createState() => _TaskListViewState();
@@ -113,7 +146,20 @@ class _TaskListViewState extends State<_TaskListView>
   @override
   void initState() {
     super.initState();
+    widget.refreshSignal.addListener(_onRefreshSignal);
     _load();
+  }
+
+  @override
+  void dispose() {
+    widget.refreshSignal.removeListener(_onRefreshSignal);
+    super.dispose();
+  }
+
+  void _onRefreshSignal() {
+    if (mounted) {
+      _load(showLoading: false);
+    }
   }
 
   Future<void> _load({bool showLoading = true}) async {
