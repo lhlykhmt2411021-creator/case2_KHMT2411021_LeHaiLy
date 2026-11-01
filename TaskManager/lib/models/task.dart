@@ -13,6 +13,17 @@ extension TaskPriorityLabel on TaskPriority {
         return 'Cao';
     }
   }
+
+  String get apiValue {
+    switch (this) {
+      case TaskPriority.low:
+        return 'low';
+      case TaskPriority.medium:
+        return 'medium';
+      case TaskPriority.high:
+        return 'high';
+    }
+  }
 }
 
 extension TaskStatusLabel on TaskStatus {
@@ -24,6 +35,17 @@ extension TaskStatusLabel on TaskStatus {
         return 'Đang thực hiện';
       case TaskStatus.completed:
         return 'Đã hoàn thành';
+    }
+  }
+
+  String get apiValue {
+    switch (this) {
+      case TaskStatus.todo:
+        return 'todo';
+      case TaskStatus.inProgress:
+        return 'in_progress';
+      case TaskStatus.completed:
+        return 'completed';
     }
   }
 }

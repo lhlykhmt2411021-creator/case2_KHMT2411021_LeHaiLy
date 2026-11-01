@@ -41,6 +41,24 @@ class Validators {
     return null;
   }
 
+  static String? taskTitle(String? value) {
+    final String title = value?.trim() ?? '';
+    if (title.isEmpty) {
+      return 'Vui lòng nhập tiêu đề công việc';
+    }
+    if (title.length > 200) {
+      return 'Tiêu đề không được vượt quá 200 ký tự';
+    }
+    return null;
+  }
+
+  static String? dateRange(DateTime? startDate, DateTime? dueDate) {
+    if (startDate != null && dueDate != null && dueDate.isBefore(startDate)) {
+      return 'Hạn hoàn thành phải sau hoặc bằng ngày bắt đầu';
+    }
+    return null;
+  }
+
   static String? avatarUrl(String? value) {
     final String url = value?.trim() ?? '';
     if (url.isEmpty) {
