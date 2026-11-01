@@ -1,5 +1,6 @@
 const express = require('express');
 const taskController = require('../controllers/taskController');
+const collaborationController = require('../controllers/collaborationController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -11,6 +12,16 @@ router.post('/', taskController.createTask);
 
 router.get('/:id/activities', taskController.listActivities);
 router.patch('/:id/status', taskController.updateStatus);
+
+router.get('/:id/assignees', collaborationController.listAssignees);
+router.post('/:id/assignees', collaborationController.createAssignees);
+router.patch('/:id/assignees/:userId', collaborationController.changePrimaryAssignee);
+router.delete('/:id/assignees/:userId', collaborationController.deleteAssignee);
+
+router.get('/:id/shares', collaborationController.listShares);
+router.post('/:id/shares', collaborationController.createShares);
+router.patch('/:id/shares/:shareId', collaborationController.changeShare);
+router.delete('/:id/shares/:shareId', collaborationController.deleteShare);
 
 router.get('/:id', taskController.getTask);
 router.put('/:id', taskController.updateTask);
