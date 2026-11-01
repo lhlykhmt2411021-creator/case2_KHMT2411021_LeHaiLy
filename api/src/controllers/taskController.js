@@ -18,62 +18,15 @@ const {
   validateUpdateTaskInput,
   validateStatusInput,
 } = require('../validators/taskValidator');
+const {
+  toActivity,
+  toTaskDetail,
+  toTaskSummary,
+} = require('../utils/taskSerializer');
 
 const INVALID_ID_MESSAGE = 'Id không hợp lệ';
 const TASK_NOT_FOUND_MESSAGE = 'Không tìm thấy công việc';
 const NO_ACCESS_MESSAGE = 'Bạn không có quyền truy cập công việc này';
-
-function toUserRef(user) {
-  if (!user) {
-    return null;
-  }
-  if (user._id) {
-    return { id: user._id.toString(), fullName: user.fullName, email: user.email };
-  }
-  return { id: user.toString() };
-}
-
-function toTaskSummary(task) {
-  return {
-    id: task._id.toString(),
-    title: task.title,
-    description: task.description,
-    status: task.status,
-    priority: task.priority,
-    startDate: task.startDate,
-    dueDate: task.dueDate,
-    createdAt: task.createdAt,
-    updatedAt: task.updatedAt,
-    createdBy: toUserRef(task.createdBy),
-    primaryAssignee: toUserRef(task.primaryAssigneeId),
-    assigneeCount: task.assigneeIds ? task.assigneeIds.length : 0,
-  };
-}
-
-function toTaskDetail(task, role, shares) {
-  return {
-    ...toTaskSummary(task),
-    role,
-    assignees: (task.assigneeIds || []).map(toUserRef),
-    shares: shares.map((share) => ({
-      id: share._id.toString(),
-      permission: share.permission,
-      user: toUserRef(share.userId),
-      sharedBy: toUserRef(share.sharedBy),
-      createdAt: share.createdAt,
-    })),
-  };
-}
-
-function toActivity(activity) {
-  return {
-    id: activity._id.toString(),
-    action: activity.action,
-    details: activity.details,
-    user: toUserRef(activity.userId),
-    createdAt: activity.createdAt,
-  };
-}
 
 async function loadTaskOrRespond(req, res, options = {}) {
   const { id } = req.params;
