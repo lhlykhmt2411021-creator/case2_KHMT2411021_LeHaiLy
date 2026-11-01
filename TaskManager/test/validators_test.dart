@@ -60,4 +60,46 @@ void main() {
       expect(Validators.avatarUrl('http://example.com/a.png'), isNull);
     });
   });
+
+  group('Validators.taskTitle', () {
+    test('trả lỗi khi rỗng', () {
+      expect(Validators.taskTitle(''), isNotNull);
+      expect(Validators.taskTitle('   '), isNotNull);
+      expect(Validators.taskTitle(null), isNotNull);
+    });
+
+    test('trả lỗi khi quá 200 ký tự', () {
+      expect(Validators.taskTitle('a' * 201), isNotNull);
+    });
+
+    test('hợp lệ khi có tiêu đề', () {
+      expect(Validators.taskTitle('Việc mẫu'), isNull);
+      expect(Validators.taskTitle('a' * 200), isNull);
+    });
+  });
+
+  group('Validators.dateRange', () {
+    test('hợp lệ khi thiếu một trong hai ngày', () {
+      expect(Validators.dateRange(null, DateTime(2026, 11, 1)), isNull);
+      expect(Validators.dateRange(DateTime(2026, 11, 1), null), isNull);
+    });
+
+    test('hợp lệ khi hạn sau hoặc bằng ngày bắt đầu', () {
+      expect(
+        Validators.dateRange(DateTime(2026, 11, 1), DateTime(2026, 11, 5)),
+        isNull,
+      );
+      expect(
+        Validators.dateRange(DateTime(2026, 11, 1), DateTime(2026, 11, 1)),
+        isNull,
+      );
+    });
+
+    test('trả lỗi khi hạn trước ngày bắt đầu', () {
+      expect(
+        Validators.dateRange(DateTime(2026, 11, 5), DateTime(2026, 11, 1)),
+        isNotNull,
+      );
+    });
+  });
 }
