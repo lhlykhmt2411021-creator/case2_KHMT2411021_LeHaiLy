@@ -77,15 +77,19 @@ Base URL: `http://localhost:3000/api`
 | Method | Endpoint | Mô tả |
 | --- | --- | --- |
 | GET | `/tasks?scope=created\|assigned\|shared` | Danh sách công việc người dùng có quyền truy cập |
+| POST | `/tasks` | Tạo công việc (title, description, priority, startDate, dueDate) |
 | GET | `/tasks/:id` | Chi tiết công việc kèm người tạo, người phụ trách, người được giao, người được chia sẻ và vai trò của người gọi |
+| PUT | `/tasks/:id` | Sửa thông tin công việc (người tạo hoặc editor) |
+| PATCH | `/tasks/:id/status` | Đổi trạng thái (người tạo, editor, người được giao) |
+| DELETE | `/tasks/:id` | Xóa công việc (chỉ người tạo) |
+| GET | `/tasks/:id/activities` | Lịch sử hoạt động của công việc |
 
 Các API công việc đều yêu cầu Bearer token. Người dùng chỉ đọc được công việc do mình tạo, được giao hoặc được chia sẻ.
 
 ## Phần chưa làm
 
-- Thêm, sửa, xóa công việc; cập nhật trạng thái
 - Giao việc cho nhiều người, chỉ định người phụ trách chính
 - Chia sẻ công việc và quản lý quyền viewer/editor
 - Tìm kiếm, lọc, sắp xếp công việc
 - Thông báo trong ứng dụng và gửi email
-- Thống kê, lịch sử hoạt động
+- Thống kê, lịch sử hoạt động trên giao diện
