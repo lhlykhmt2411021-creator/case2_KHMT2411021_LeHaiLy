@@ -1,6 +1,7 @@
 const express = require('express');
 const taskController = require('../controllers/taskController');
 const collaborationController = require('../controllers/collaborationController');
+const emailLogController = require('../controllers/emailLogController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -11,6 +12,7 @@ router.get('/', taskController.listTasks);
 router.post('/', taskController.createTask);
 
 router.get('/:id/activities', taskController.listActivities);
+router.get('/:id/email-logs', emailLogController.listTaskEmailLogs);
 router.patch('/:id/status', taskController.updateStatus);
 
 router.get('/:id/assignees', collaborationController.listAssignees);
