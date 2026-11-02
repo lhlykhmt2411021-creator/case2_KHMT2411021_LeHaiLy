@@ -83,13 +83,19 @@ Base URL: `http://localhost:3000/api`
 | PATCH | `/tasks/:id/status` | Đổi trạng thái (người tạo, editor, người được giao) |
 | DELETE | `/tasks/:id` | Xóa công việc (chỉ người tạo) |
 | GET | `/tasks/:id/activities` | Lịch sử hoạt động của công việc |
+| GET | `/tasks/:id/assignees` | Danh sách người được giao và người phụ trách chính |
+| POST | `/tasks/:id/assignees` | Giao việc cho một hoặc nhiều người (`userIds`, `primaryAssigneeId`) — chỉ người tạo |
+| PATCH | `/tasks/:id/assignees/:userId` | Đặt người phụ trách chính — chỉ người tạo |
+| DELETE | `/tasks/:id/assignees/:userId` | Hủy giao việc — chỉ người tạo |
+| GET | `/tasks/:id/shares` | Danh sách người được chia sẻ kèm quyền |
+| POST | `/tasks/:id/shares` | Chia sẻ công việc (`userIds`, `permission`: `viewer`/`editor`) — chỉ người tạo |
+| PATCH | `/tasks/:id/shares/:shareId` | Đổi quyền chia sẻ — chỉ người tạo |
+| DELETE | `/tasks/:id/shares/:shareId` | Thu hồi quyền chia sẻ — chỉ người tạo |
 
-Các API công việc đều yêu cầu Bearer token. Người dùng chỉ đọc được công việc do mình tạo, được giao hoặc được chia sẻ.
+Các API công việc đều yêu cầu Bearer token. Người dùng chỉ đọc được công việc do mình tạo, được giao hoặc được chia sẻ. Người tạo quản lý giao việc/chia sẻ; editor sửa nội dung và đổi trạng thái; người được giao đổi trạng thái; người được chia sẻ chỉ xem hoặc chỉnh sửa theo quyền.
 
 ## Phần chưa làm
 
-- Giao việc cho nhiều người, chỉ định người phụ trách chính
-- Chia sẻ công việc và quản lý quyền viewer/editor
 - Tìm kiếm, lọc, sắp xếp công việc
 - Thông báo trong ứng dụng và gửi email
 - Thống kê, lịch sử hoạt động trên giao diện
