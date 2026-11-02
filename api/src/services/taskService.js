@@ -3,8 +3,23 @@ const TaskShare = require('../models/TaskShare');
 const TaskActivity = require('../models/TaskActivity');
 const User = require('../models/User');
 const { httpError } = require('../utils/httpError');
+const { formatDate } = require('../utils/emailTemplates');
+const {
+  findUsers,
+  notifyRecipients,
+  notifyTaskMembers,
+} = require('./notificationService');
 
 const TASK_SCOPES = ['created', 'assigned', 'shared'];
+const STATUS_LABELS = {
+  todo: 'Chưa thực hiện',
+  in_progress: 'Đang thực hiện',
+  completed: 'Đã hoàn thành',
+};
+const PERMISSION_LABELS = {
+  viewer: 'Chỉ xem',
+  editor: 'Chỉnh sửa',
+};
 
 function sameUser(value, userId) {
   if (!value) {
@@ -110,6 +125,9 @@ async function createTask(userId, input) {
 }
 
 async function updateTask(task, userId, input) {
+  const previousDueDate = task.dueDate ? task.dueDate.getTime() : null;
+  const nextDueDate = input.dueDate ? input.dueDate.getTime() : null;
+
   task.title = input.title;
   task.description = input.description;
   task.priority = input.priority;
@@ -118,6 +136,17 @@ async function updateTask(task, userId, input) {
   await task.save();
 
   await logActivity(task._id, userId, 'updated', 'Đã cập nhật thông tin công việc');
+
+  if (previousDueDate !== nextDueDate) {
+    await notifyTaskMembers({
+      task,
+      actorId: userId,
+      type: 'due_date_changed',
+      title: 'Hạn hoàn thành thay đổi',
+      message: `Công việc "${task.title}" có hạn hoàn thành mới: ${formatDate(task.dueDate)}`,
+      emailEvent: 'due_date_changed',
+    });
+  }
   return task;
 }
 
@@ -136,11 +165,36 @@ async function changeTaskStatus(task, userId, status) {
     'status_changed',
     `Trạng thái: ${previousStatus} -> ${status}`
   );
+
+  const previousLabel = STATUS_LABELS[previousStatus] || previousStatus;
+  const nextLabel = STATUS_LABELS[status] || status;
+  await notifyTaskMembers({
+    task,
+    actorId: userId,
+    type: 'status_changed',
+    title: 'Trạng thái công việc thay đổi',
+    message: `Công việc "${task.title}": ${previousLabel} → ${nextLabel}`,
+    emailEvent: status === 'completed' ? 'completed' : null,
+  });
   return task;
 }
 
 async function deleteTask(task, userId) {
+  const shares = await TaskShare.find({ taskId: task._id }).select('userId');
+  const recipients = await findUsers([
+    ...task.assigneeIds.map((id) => (id._id ?? id).toString()),
+    ...shares.map((share) => share.userId.toString()),
+  ]);
+
   await logActivity(task._id, userId, 'deleted', `Đã xóa công việc "${task.title}"`);
+  await notifyRecipients({
+    task: null,
+    actorId: userId,
+    recipients,
+    type: 'task_deleted',
+    title: 'Công việc đã bị xóa',
+    message: `Công việc "${task.title}" đã bị người tạo xóa.`,
+  });
   await TaskShare.deleteMany({ taskId: task._id });
   await task.deleteOne();
 }
@@ -187,6 +241,16 @@ async function addAssignees(taskId, actorId, userIds, primaryAssigneeId) {
 
   const names = users.map((user) => user.fullName).join(', ');
   await logActivity(task._id, actorId, 'assigned', `Đã giao việc cho ${names}`);
+
+  await notifyRecipients({
+    task,
+    actorId,
+    recipients: users,
+    type: 'assigned',
+    title: 'Bạn được giao công việc',
+    message: `Bạn được giao công việc "${task.title}".`,
+    emailEvent: 'assigned',
+  });
   return task;
 }
 
@@ -211,6 +275,15 @@ async function setPrimaryAssignee(taskId, actorId, userId) {
     'assigned',
     `Đã đặt ${user.fullName} làm người phụ trách chính`
   );
+
+  await notifyRecipients({
+    task,
+    actorId,
+    recipients: [user],
+    type: 'assigned',
+    title: 'Bạn là người phụ trách chính',
+    message: `Bạn được đặt làm người phụ trách chính của công việc "${task.title}".`,
+  });
   return task;
 }
 
@@ -236,6 +309,17 @@ async function removeAssignee(taskId, actorId, userId) {
     'unassigned',
     `Đã hủy giao việc cho ${user ? user.fullName : id}`
   );
+
+  if (user) {
+    await notifyRecipients({
+      task,
+      actorId,
+      recipients: [user],
+      type: 'unassigned',
+      title: 'Bạn không còn được giao công việc',
+      message: `Bạn đã được hủy giao công việc "${task.title}".`,
+    });
+  }
   return task;
 }
 
@@ -277,6 +361,16 @@ async function addShares(taskId, actorId, userIds, permission) {
     'shared',
     `Đã chia sẻ công việc cho ${names} (${permission})`
   );
+
+  await notifyRecipients({
+    task,
+    actorId,
+    recipients: users,
+    type: 'shared',
+    title: 'Công việc được chia sẻ với bạn',
+    message: `Bạn được chia sẻ công việc "${task.title}" với quyền ${PERMISSION_LABELS[permission] || permission}.`,
+    emailEvent: 'shared',
+  });
   return task;
 }
 
@@ -290,6 +384,7 @@ async function updateShare(taskId, actorId, shareId, permission) {
     return share;
   }
 
+  const task = await loadRawTask(taskId);
   share.permission = permission;
   await share.save();
 
@@ -300,6 +395,17 @@ async function updateShare(taskId, actorId, shareId, permission) {
     'share_updated',
     `Đã đổi quyền của ${user ? user.fullName : share.userId} thành ${permission}`
   );
+
+  if (user) {
+    await notifyRecipients({
+      task,
+      actorId,
+      recipients: [user],
+      type: 'share_updated',
+      title: 'Quyền chia sẻ thay đổi',
+      message: `Quyền của bạn với công việc "${task.title}" đổi thành ${PERMISSION_LABELS[permission] || permission}.`,
+    });
+  }
   return share;
 }
 
@@ -309,6 +415,7 @@ async function revokeShare(taskId, actorId, shareId) {
     throw httpError(404, 'Không tìm thấy lượt chia sẻ');
   }
 
+  const task = await loadRawTask(taskId);
   const user = await User.findById(share.userId).select('fullName');
   await share.deleteOne();
 
@@ -318,6 +425,17 @@ async function revokeShare(taskId, actorId, shareId) {
     'share_revoked',
     `Đã thu hồi quyền của ${user ? user.fullName : share.userId}`
   );
+
+  if (user) {
+    await notifyRecipients({
+      task,
+      actorId,
+      recipients: [user],
+      type: 'share_revoked',
+      title: 'Quyền chia sẻ bị thu hồi',
+      message: `Quyền truy cập công việc "${task.title}" của bạn đã bị thu hồi.`,
+    });
+  }
   return share;
 }
 

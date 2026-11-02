@@ -1,4 +1,6 @@
-﻿import '../models/task.dart';
+﻿import '../models/email_log.dart';
+import '../models/task.dart';
+import '../models/task_activity.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
 
@@ -158,6 +160,51 @@ class TaskService {
       token: token,
     );
     return _parseTask(data['task']);
+  }
+
+  Future<List<TaskActivity>> fetchActivities(String id) async {
+    final String token = await _requireToken();
+    final Map<String, dynamic> data = await _apiClient.get(
+      '/tasks/$id/activities',
+      token: token,
+    );
+    final Object? activities = data['activities'];
+    if (activities is! List) {
+      return const <TaskActivity>[];
+    }
+    return activities
+        .whereType<Map<String, dynamic>>()
+        .map(TaskActivity.fromJson)
+        .toList();
+  }
+
+  Future<List<EmailLog>> fetchEmailLogs(String id) async {
+    final String token = await _requireToken();
+    final Map<String, dynamic> data = await _apiClient.get(
+      '/tasks/$id/email-logs',
+      token: token,
+    );
+    final Object? logs = data['emailLogs'];
+    if (logs is! List) {
+      return const <EmailLog>[];
+    }
+    return logs
+        .whereType<Map<String, dynamic>>()
+        .map(EmailLog.fromJson)
+        .toList();
+  }
+
+  Future<EmailLog> retryEmailLog(String logId) async {
+    final String token = await _requireToken();
+    final Map<String, dynamic> data = await _apiClient.post(
+      '/email-logs/$logId/retry',
+      token: token,
+    );
+    final Object? log = data['emailLog'];
+    if (log is! Map<String, dynamic>) {
+      throw const ApiException('Không đọc được dữ liệu email');
+    }
+    return EmailLog.fromJson(log);
   }
 
   Future<String> _requireToken() async {
