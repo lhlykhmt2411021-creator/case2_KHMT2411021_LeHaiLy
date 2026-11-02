@@ -276,7 +276,9 @@ void main() {
       expect(find.byType(TaskDetailScreen), findsNothing);
     });
 
-    testWidgets('viewer không thấy menu thao tác', (WidgetTester tester) async {
+    testWidgets('viewer chỉ thấy mục lịch sử hoạt động', (
+      WidgetTester tester,
+    ) async {
       final FakeTaskService taskService = FakeTaskService(
         task: buildTask(role: 'viewer'),
       );
@@ -290,7 +292,16 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.more_vert), findsNothing);
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lịch sử hoạt động'), findsOneWidget);
+      expect(find.text('Chỉnh sửa công việc'), findsNothing);
+      expect(find.text('Đổi trạng thái'), findsNothing);
+      expect(find.text('Giao việc'), findsNothing);
+      expect(find.text('Chia sẻ công việc'), findsNothing);
+      expect(find.text('Lịch sử email'), findsNothing);
+      expect(find.text('Xóa công việc'), findsNothing);
     });
   });
 }
