@@ -85,6 +85,81 @@ class TaskService {
     await _apiClient.delete('/tasks/$id', token: token);
   }
 
+  Future<Task> assignUsers(
+    String id, {
+    required List<String> userIds,
+    String? primaryAssigneeId,
+  }) async {
+    final String token = await _requireToken();
+    final Map<String, dynamic> data = await _apiClient.post(
+      '/tasks/$id/assignees',
+      token: token,
+      body: <String, dynamic>{
+        'userIds': userIds,
+        'primaryAssigneeId': ?primaryAssigneeId,
+      },
+    );
+    return _parseTask(data['task']);
+  }
+
+  Future<Task> setPrimaryAssignee(String id, String userId) async {
+    final String token = await _requireToken();
+    final Map<String, dynamic> data = await _apiClient.patch(
+      '/tasks/$id/assignees/$userId',
+      token: token,
+    );
+    return _parseTask(data['task']);
+  }
+
+  Future<Task> removeAssignee(String id, String userId) async {
+    final String token = await _requireToken();
+    final Map<String, dynamic> data = await _apiClient.delete(
+      '/tasks/$id/assignees/$userId',
+      token: token,
+    );
+    return _parseTask(data['task']);
+  }
+
+  Future<Task> addShares(
+    String id, {
+    required List<String> userIds,
+    required String permission,
+  }) async {
+    final String token = await _requireToken();
+    final Map<String, dynamic> data = await _apiClient.post(
+      '/tasks/$id/shares',
+      token: token,
+      body: <String, dynamic>{
+        'userIds': userIds,
+        'permission': permission,
+      },
+    );
+    return _parseTask(data['task']);
+  }
+
+  Future<Task> updateShare(
+    String id,
+    String shareId, {
+    required String permission,
+  }) async {
+    final String token = await _requireToken();
+    final Map<String, dynamic> data = await _apiClient.patch(
+      '/tasks/$id/shares/$shareId',
+      token: token,
+      body: <String, dynamic>{'permission': permission},
+    );
+    return _parseTask(data['task']);
+  }
+
+  Future<Task> removeShare(String id, String shareId) async {
+    final String token = await _requireToken();
+    final Map<String, dynamic> data = await _apiClient.delete(
+      '/tasks/$id/shares/$shareId',
+      token: token,
+    );
+    return _parseTask(data['task']);
+  }
+
   Future<String> _requireToken() async {
     final String? token = await authService.readToken();
     if (token == null) {

@@ -233,6 +233,8 @@ void main() {
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
       expect(find.text('Chỉnh sửa công việc'), findsOneWidget);
+      expect(find.text('Giao việc'), findsOneWidget);
+      expect(find.text('Chia sẻ công việc'), findsOneWidget);
       expect(find.text('Xóa công việc'), findsOneWidget);
 
       await tester.tap(find.text('Đổi trạng thái'));

@@ -1,6 +1,8 @@
 const Task = require('../models/Task');
 const TaskShare = require('../models/TaskShare');
 const TaskActivity = require('../models/TaskActivity');
+const User = require('../models/User');
+const { httpError } = require('../utils/httpError');
 
 const TASK_SCOPES = ['created', 'assigned', 'shared'];
 
@@ -143,8 +145,186 @@ async function deleteTask(task, userId) {
   await task.deleteOne();
 }
 
+async function loadRawTask(taskId) {
+  const task = await Task.findById(taskId);
+  if (!task) {
+    throw httpError(404, 'Không tìm thấy công việc');
+  }
+  return task;
+}
+
+async function assertUsersExist(userIds) {
+  const users = await User.find({ _id: { $in: userIds } }).select('fullName email');
+  if (users.length !== userIds.length) {
+    throw httpError(400, 'Có người dùng không tồn tại');
+  }
+  return users;
+}
+
+async function addAssignees(taskId, actorId, userIds, primaryAssigneeId) {
+  const task = await loadRawTask(taskId);
+  const uniqueIds = [...new Set(userIds.map(String))];
+
+  if (uniqueIds.includes(task.createdBy.toString())) {
+    throw httpError(400, 'Không thể giao việc cho chính người tạo');
+  }
+
+  const users = await assertUsersExist(uniqueIds);
+  const currentIds = task.assigneeIds.map((id) => id.toString());
+  if (uniqueIds.some((id) => currentIds.includes(id))) {
+    throw httpError(409, 'Một số người đã được giao việc này');
+  }
+
+  await TaskShare.deleteMany({ taskId: task._id, userId: { $in: uniqueIds } });
+
+  task.assigneeIds.push(...uniqueIds);
+  if (primaryAssigneeId) {
+    task.primaryAssigneeId = primaryAssigneeId;
+  } else if (!task.primaryAssigneeId) {
+    task.primaryAssigneeId = uniqueIds[0];
+  }
+  await task.save();
+
+  const names = users.map((user) => user.fullName).join(', ');
+  await logActivity(task._id, actorId, 'assigned', `Đã giao việc cho ${names}`);
+  return task;
+}
+
+async function setPrimaryAssignee(taskId, actorId, userId) {
+  const task = await loadRawTask(taskId);
+  const isAssigned = task.assigneeIds.some((id) => id.toString() === String(userId));
+  if (!isAssigned) {
+    throw httpError(400, 'Người này chưa được giao công việc');
+  }
+
+  const user = await User.findById(userId).select('fullName');
+  if (!user) {
+    throw httpError(400, 'Có người dùng không tồn tại');
+  }
+
+  task.primaryAssigneeId = userId;
+  await task.save();
+
+  await logActivity(
+    task._id,
+    actorId,
+    'assigned',
+    `Đã đặt ${user.fullName} làm người phụ trách chính`
+  );
+  return task;
+}
+
+async function removeAssignee(taskId, actorId, userId) {
+  const task = await loadRawTask(taskId);
+  const id = String(userId);
+  const index = task.assigneeIds.findIndex((assigneeId) => assigneeId.toString() === id);
+  if (index === -1) {
+    throw httpError(404, 'Người này chưa được giao công việc');
+  }
+
+  const user = await User.findById(userId).select('fullName');
+  task.assigneeIds.splice(index, 1);
+
+  if (task.primaryAssigneeId && task.primaryAssigneeId.toString() === id) {
+    task.primaryAssigneeId = task.assigneeIds.length > 0 ? task.assigneeIds[0] : null;
+  }
+  await task.save();
+
+  await logActivity(
+    task._id,
+    actorId,
+    'unassigned',
+    `Đã hủy giao việc cho ${user ? user.fullName : id}`
+  );
+  return task;
+}
+
+async function addShares(taskId, actorId, userIds, permission) {
+  const task = await loadRawTask(taskId);
+  const uniqueIds = [...new Set(userIds.map(String))];
+
+  if (uniqueIds.includes(task.createdBy.toString())) {
+    throw httpError(400, 'Không cần chia sẻ cho chính người tạo');
+  }
+
+  const users = await assertUsersExist(uniqueIds);
+  const assigneeIds = task.assigneeIds.map((id) => id.toString());
+  if (uniqueIds.some((id) => assigneeIds.includes(id))) {
+    throw httpError(409, 'Người dùng đã được giao việc nên không cần chia sẻ');
+  }
+
+  const existingCount = await TaskShare.countDocuments({
+    taskId: task._id,
+    userId: { $in: uniqueIds },
+  });
+  if (existingCount > 0) {
+    throw httpError(409, 'Một số người đã được chia sẻ công việc này');
+  }
+
+  await TaskShare.insertMany(
+    uniqueIds.map((userId) => ({
+      taskId: task._id,
+      userId,
+      permission,
+      sharedBy: actorId,
+    }))
+  );
+
+  const names = users.map((user) => user.fullName).join(', ');
+  await logActivity(
+    task._id,
+    actorId,
+    'shared',
+    `Đã chia sẻ công việc cho ${names} (${permission})`
+  );
+  return task;
+}
+
+async function updateShare(taskId, actorId, shareId, permission) {
+  const share = await TaskShare.findOne({ _id: shareId, taskId });
+  if (!share) {
+    throw httpError(404, 'Không tìm thấy lượt chia sẻ');
+  }
+
+  if (share.permission === permission) {
+    return share;
+  }
+
+  share.permission = permission;
+  await share.save();
+
+  const user = await User.findById(share.userId).select('fullName');
+  await logActivity(
+    taskId,
+    actorId,
+    'share_updated',
+    `Đã đổi quyền của ${user ? user.fullName : share.userId} thành ${permission}`
+  );
+  return share;
+}
+
+async function revokeShare(taskId, actorId, shareId) {
+  const share = await TaskShare.findOne({ _id: shareId, taskId });
+  if (!share) {
+    throw httpError(404, 'Không tìm thấy lượt chia sẻ');
+  }
+
+  const user = await User.findById(share.userId).select('fullName');
+  await share.deleteOne();
+
+  await logActivity(
+    taskId,
+    actorId,
+    'share_revoked',
+    `Đã thu hồi quyền của ${user ? user.fullName : share.userId}`
+  );
+  return share;
+}
+
 module.exports = {
   TASK_SCOPES,
+  addAssignees,
+  addShares,
   canChangeTaskStatus,
   canEditTask,
   canManageTask,
@@ -157,6 +337,10 @@ module.exports = {
   getTaskWithAccess,
   isAssignee,
   logActivity,
+  removeAssignee,
+  revokeShare,
   sameUser,
+  setPrimaryAssignee,
+  updateShare,
   updateTask,
 };

@@ -4,12 +4,15 @@ import '../../models/task.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/task_service.dart';
+import '../../services/user_service.dart';
 import '../../utils/date_formatter.dart';
 import '../../widgets/loading_view.dart';
 import '../../widgets/priority_badge.dart';
 import '../../widgets/status_badge.dart';
 import '../auth/login_screen.dart';
+import 'task_assignees_screen.dart';
 import 'task_form_screen.dart';
+import 'task_shares_screen.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   const TaskDetailScreen({
@@ -28,6 +31,9 @@ class TaskDetailScreen extends StatefulWidget {
 }
 
 class _TaskDetailScreenState extends State<TaskDetailScreen> {
+  late final UserService _userService =
+      UserService(authService: widget.authService);
+
   bool _loading = true;
   bool _updating = false;
   String? _error;
@@ -47,6 +53,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   bool get _canChangeStatus => _canEdit || _task?.role == 'assignee';
 
   bool get _canDelete => _task?.role == 'creator';
+
+  bool get _canManage => _task?.role == 'creator';
 
   Future<void> _load() async {
     setState(() {
@@ -105,6 +113,48 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     if (changed == true && mounted) {
       await _load();
       _showMessage('Đã cập nhật công việc');
+    }
+  }
+
+  Future<void> _openAssignees() async {
+    final Task? task = _task;
+    if (task == null) {
+      return;
+    }
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => TaskAssigneesScreen(
+          task: task,
+          taskService: widget.taskService,
+          userService: _userService,
+        ),
+      ),
+    );
+
+    if (mounted) {
+      await _load();
+    }
+  }
+
+  Future<void> _openShares() async {
+    final Task? task = _task;
+    if (task == null) {
+      return;
+    }
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => TaskSharesScreen(
+          task: task,
+          taskService: widget.taskService,
+          userService: _userService,
+        ),
+      ),
+    );
+
+    if (mounted) {
+      await _load();
     }
   }
 
@@ -233,6 +283,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   case 'status':
                     _changeStatus();
                     break;
+                  case 'assign':
+                    _openAssignees();
+                    break;
+                  case 'share':
+                    _openShares();
+                    break;
                   case 'delete':
                     _delete();
                     break;
@@ -249,6 +305,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     const PopupMenuItem<String>(
                       value: 'status',
                       child: Text('Đổi trạng thái'),
+                    ),
+                  if (_canManage)
+                    const PopupMenuItem<String>(
+                      value: 'assign',
+                      child: Text('Giao việc'),
+                    ),
+                  if (_canManage)
+                    const PopupMenuItem<String>(
+                      value: 'share',
+                      child: Text('Chia sẻ công việc'),
                     ),
                   if (_canDelete)
                     const PopupMenuItem<String>(
