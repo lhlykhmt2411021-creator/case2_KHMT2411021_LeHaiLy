@@ -10,7 +10,9 @@ import '../../widgets/loading_view.dart';
 import '../../widgets/priority_badge.dart';
 import '../../widgets/status_badge.dart';
 import '../auth/login_screen.dart';
+import 'task_activity_screen.dart';
 import 'task_assignees_screen.dart';
+import 'task_email_logs_screen.dart';
 import 'task_form_screen.dart';
 import 'task_shares_screen.dart';
 
@@ -158,6 +160,42 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     }
   }
 
+  Future<void> _openActivities() async {
+    final Task? task = _task;
+    if (task == null) {
+      return;
+    }
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => TaskActivityScreen(
+          taskId: task.id,
+          taskTitle: task.title,
+          taskService: widget.taskService,
+          authService: widget.authService,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openEmailLogs() async {
+    final Task? task = _task;
+    if (task == null) {
+      return;
+    }
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => TaskEmailLogsScreen(
+          taskId: task.id,
+          taskTitle: task.title,
+          taskService: widget.taskService,
+          authService: widget.authService,
+        ),
+      ),
+    );
+  }
+
   Future<void> _changeStatus() async {
     final Task? task = _task;
     if (task == null) {
@@ -272,7 +310,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       appBar: AppBar(
         title: const Text('Chi tiết công việc'),
         actions: <Widget>[
-          if (_task != null && (_canEdit || _canChangeStatus || _canDelete))
+          if (_task != null)
             PopupMenuButton<String>(
               tooltip: 'Thao tác',
               onSelected: (String value) {
@@ -288,6 +326,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     break;
                   case 'share':
                     _openShares();
+                    break;
+                  case 'activity':
+                    _openActivities();
+                    break;
+                  case 'email-logs':
+                    _openEmailLogs();
                     break;
                   case 'delete':
                     _delete();
@@ -315,6 +359,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     const PopupMenuItem<String>(
                       value: 'share',
                       child: Text('Chia sẻ công việc'),
+                    ),
+                  const PopupMenuItem<String>(
+                    value: 'activity',
+                    child: Text('Lịch sử hoạt động'),
+                  ),
+                  if (_canManage)
+                    const PopupMenuItem<String>(
+                      value: 'email-logs',
+                      child: Text('Lịch sử email'),
                     ),
                   if (_canDelete)
                     const PopupMenuItem<String>(
