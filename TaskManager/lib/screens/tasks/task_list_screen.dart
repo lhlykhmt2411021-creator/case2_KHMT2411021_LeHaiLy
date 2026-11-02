@@ -4,10 +4,12 @@ import '../../models/task.dart';
 import '../../models/user.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
+import '../../services/notification_service.dart';
 import '../../services/task_service.dart';
 import '../../widgets/loading_view.dart';
 import '../../widgets/task_card.dart';
 import '../auth/login_screen.dart';
+import '../notifications/notification_screen.dart';
 import '../profile/profile_screen.dart';
 import 'task_detail_screen.dart';
 import 'task_form_screen.dart';
@@ -29,12 +31,50 @@ class TaskListScreen extends StatefulWidget {
 class _TaskListScreenState extends State<TaskListScreen> {
   late final TaskService _taskService =
       TaskService(authService: widget.authService);
+  late final NotificationService _notificationService =
+      NotificationService(authService: widget.authService);
   final ValueNotifier<int> _refreshSignal = ValueNotifier<int>(0);
+
+  int _unreadCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadCount();
+    _refreshSignal.addListener(_loadUnreadCount);
+  }
 
   @override
   void dispose() {
+    _refreshSignal.removeListener(_loadUnreadCount);
     _refreshSignal.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final int count = await _notificationService.fetchUnreadCount();
+      if (mounted) {
+        setState(() => _unreadCount = count);
+      }
+    } on ApiException {
+      // Bỏ qua lỗi tải số thông báo chưa đọc, không chặn màn hình chính.
+    }
+  }
+
+  Future<void> _openNotifications() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => NotificationScreen(
+          notificationService: _notificationService,
+          taskService: _taskService,
+          authService: widget.authService,
+        ),
+      ),
+    );
+    if (mounted) {
+      await _loadUnreadCount();
+    }
   }
 
   Future<void> _openProfile() async {
@@ -71,6 +111,15 @@ class _TaskListScreenState extends State<TaskListScreen> {
         appBar: AppBar(
           title: const Text('Công việc'),
           actions: <Widget>[
+            IconButton(
+              tooltip: 'Thông báo',
+              onPressed: _openNotifications,
+              icon: Badge.count(
+                count: _unreadCount,
+                isLabelVisible: _unreadCount > 0,
+                child: const Icon(Icons.notifications_none),
+              ),
+            ),
             IconButton(
               tooltip: 'Tài khoản',
               onPressed: _openProfile,
