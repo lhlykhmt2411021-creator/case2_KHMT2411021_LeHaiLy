@@ -35,6 +35,12 @@ Biến môi trường trong `api/.env`:
 | `MONGODB_URI` | Chuỗi kết nối MongoDB, phải có tên database `task_manager` |
 | `JWT_SECRET` | Khóa ký JWT |
 | `JWT_EXPIRES_IN` | Hạn của token, mặc định `7d` |
+| `SMTP_HOST`, `SMTP_PORT` | Máy chủ SMTP dùng để gửi email thông báo |
+| `SMTP_SECURE` | `true` nếu dùng kết nối TLS ngay từ đầu (thường là cổng 465) |
+| `SMTP_USER`, `SMTP_PASS` | Tài khoản đăng nhập SMTP |
+| `MAIL_FROM` | Địa chỉ người gửi, mặc định lấy `SMTP_USER` |
+
+Nếu chưa cấu hình `SMTP_HOST`/`SMTP_PORT`, hệ thống vẫn tạo bản ghi email log với trạng thái `skipped` và lỗi "Chưa cấu hình SMTP" thay vì làm hỏng thao tác nghiệp vụ.
 
 Không commit file `.env` lên repository.
 
@@ -91,11 +97,28 @@ Base URL: `http://localhost:3000/api`
 | POST | `/tasks/:id/shares` | Chia sẻ công việc (`userIds`, `permission`: `viewer`/`editor`) — chỉ người tạo |
 | PATCH | `/tasks/:id/shares/:shareId` | Đổi quyền chia sẻ — chỉ người tạo |
 | DELETE | `/tasks/:id/shares/:shareId` | Thu hồi quyền chia sẻ — chỉ người tạo |
+| GET | `/tasks/:id/email-logs` | Lịch sử gửi email của công việc — chỉ người tạo |
 
 Các API công việc đều yêu cầu Bearer token. Người dùng chỉ đọc được công việc do mình tạo, được giao hoặc được chia sẻ. Người tạo quản lý giao việc/chia sẻ; editor sửa nội dung và đổi trạng thái; người được giao đổi trạng thái; người được chia sẻ chỉ xem hoặc chỉnh sửa theo quyền.
+
+### Thông báo
+
+| Method | Endpoint | Mô tả |
+| --- | --- | --- |
+| GET | `/notifications?isRead=&limit=` | Danh sách thông báo của người dùng, kèm `unreadCount` |
+| GET | `/notifications/unread-count` | Chỉ trả về số thông báo chưa đọc |
+| PATCH | `/notifications/:id/read` | Đánh dấu một thông báo đã đọc |
+| PATCH | `/notifications/read-all` | Đánh dấu tất cả thông báo đã đọc |
+
+### Email
+
+| Method | Endpoint | Mô tả |
+| --- | --- | --- |
+| POST | `/email-logs/:id/retry` | Gửi lại email đã ghi log (tối đa 3 lần gửi), chỉ người tạo công việc |
+
+Thông báo trong ứng dụng được tạo khi: được giao việc, bị hủy giao, được chia sẻ, đổi quyền chia sẻ, bị thu hồi quyền, công việc đổi trạng thái, đổi hạn hoàn thành hoặc bị xóa. Email được gửi cho người được giao / người được chia sẻ ở các sự kiện giao việc, chia sẻ, đổi hạn và hoàn thành; mỗi lần gửi đều ghi vào collection `email_logs` với trạng thái `sent`, `failed` hoặc `skipped`.
 
 ## Phần chưa làm
 
 - Tìm kiếm, lọc, sắp xếp công việc
-- Thông báo trong ứng dụng và gửi email
-- Thống kê, lịch sử hoạt động trên giao diện
+- Thống kê trên giao diện
