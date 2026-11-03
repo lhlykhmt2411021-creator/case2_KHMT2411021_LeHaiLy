@@ -82,7 +82,7 @@ Base URL: `http://localhost:3000/api`
 
 | Method | Endpoint | Mô tả |
 | --- | --- | --- |
-| GET | `/tasks?scope=created\|assigned\|shared` | Danh sách công việc người dùng có quyền truy cập |
+| GET | `/tasks?scope=created\|assigned\|shared` | Danh sách công việc người dùng có quyền truy cập. Hỗ trợ thêm `status`, `priority`, `q`, `assigneeId`, `sortBy` (`createdAt\|dueDate\|priority\|title`), `order` (`asc\|desc`) |
 | POST | `/tasks` | Tạo công việc (title, description, priority, startDate, dueDate) |
 | GET | `/tasks/:id` | Chi tiết công việc kèm người tạo, người phụ trách, người được giao, người được chia sẻ và vai trò của người gọi |
 | PUT | `/tasks/:id` | Sửa thông tin công việc (người tạo hoặc editor) |
@@ -118,7 +118,24 @@ Các API công việc đều yêu cầu Bearer token. Người dùng chỉ đọ
 
 Thông báo trong ứng dụng được tạo khi: được giao việc, bị hủy giao, được chia sẻ, đổi quyền chia sẻ, bị thu hồi quyền, công việc đổi trạng thái, đổi hạn hoàn thành hoặc bị xóa. Email được gửi cho người được giao / người được chia sẻ ở các sự kiện giao việc, chia sẻ, đổi hạn và hoàn thành; mỗi lần gửi đều ghi vào collection `email_logs` với trạng thái `sent`, `failed` hoặc `skipped`.
 
+### Thống kê
+
+| Method | Endpoint | Mô tả |
+| --- | --- | --- |
+| GET | `/statistics/tasks` | Tổng số công việc, số lượng theo trạng thái, theo mức ưu tiên và tỷ lệ hoàn thành |
+| GET | `/statistics/assignments` | Số công việc, số hoàn thành và số quá hạn theo từng người được giao |
+| GET | `/statistics/deadlines` | Số công việc quá hạn, sắp đến hạn trong 7 ngày, chưa có hạn, đã hoàn thành kèm danh sách công việc |
+
+Các API thống kê chỉ tính trên công việc mà người dùng hiện tại có quyền truy cập (do mình tạo, được giao hoặc được chia sẻ).
+
+## Giao diện Flutter
+
+- Danh sách công việc có thanh tìm kiếm theo tiêu đề/mô tả, chip lọc theo trạng thái, lọc theo mức ưu tiên, menu sắp xếp (mới nhất, hạn gần nhất, ưu tiên, tiêu đề) và nút xóa lọc.
+- Màn hình **Cá nhân và thống kê** mở từ thanh công cụ: thông tin người dùng, số liệu tổng quan, thống kê theo trạng thái/ưu tiên, phân công theo người, danh sách công việc quá hạn và sắp đến hạn.
+- Các màn hình khác: đăng nhập, đăng ký, danh sách công việc, chi tiết, thêm/sửa công việc, giao việc, chia sẻ và quyền, thông báo, lịch sử hoạt động, lịch sử email.
+
 ## Phần chưa làm
 
-- Tìm kiếm, lọc, sắp xếp công việc
-- Thống kê trên giao diện
+- Job tự động nhắc hạn trước 24 giờ (mục mở rộng của đề, chưa triển khai).
+- Gửi email thật cần cấu hình SMTP trong `.env`; nếu chưa cấu hình, hệ thống ghi log `skipped`.
+- Chưa phân trang danh sách công việc và thông báo (thông báo chỉ có tham số `limit`).
