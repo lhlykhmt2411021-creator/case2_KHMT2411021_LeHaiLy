@@ -1,29 +1,49 @@
-﻿import '../models/email_log.dart';
+import '../models/email_log.dart';
 import '../models/task.dart';
 import '../models/task_activity.dart';
+import '../models/task_query.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
 
 class TaskService {
-  TaskService({
-    required this.authService,
-    ApiClient? apiClient,
-  }) : _apiClient = apiClient ?? ApiClient();
+  TaskService({required this.authService, ApiClient? apiClient})
+    : _apiClient = apiClient ?? ApiClient();
 
   final AuthService authService;
   final ApiClient _apiClient;
 
-  Future<List<Task>> fetchTasks({required String scope}) async {
+  Future<List<Task>> fetchTasks({
+    required String scope,
+    TaskListQuery query = const TaskListQuery(),
+  }) async {
     final String token = await _requireToken();
-    final Map<String, dynamic> data =
-        await _apiClient.get('/tasks?scope=$scope', token: token);
+    final List<String> params = <String>['scope=$scope'];
+    if (query.status != null) {
+      params.add('status=${query.status!.apiValue}');
+    }
+    if (query.priority != null) {
+      params.add('priority=${query.priority!.apiValue}');
+    }
+    final String keyword = query.keyword.trim();
+    if (keyword.isNotEmpty) {
+      params.add('q=${Uri.encodeQueryComponent(keyword)}');
+    }
+    params.add('sortBy=${query.sortBy.apiValue}');
+    params.add('order=${query.ascending ? 'asc' : 'desc'}');
+
+    final Map<String, dynamic> data = await _apiClient.get(
+      '/tasks?${params.join('&')}',
+      token: token,
+    );
     return _parseTasks(data['tasks']);
   }
 
   Future<Task> fetchTask(String id) async {
     final String token = await _requireToken();
-    final Map<String, dynamic> data =
-        await _apiClient.get('/tasks/$id', token: token);
+    final Map<String, dynamic> data = await _apiClient.get(
+      '/tasks/$id',
+      token: token,
+    );
     return _parseTask(data['task']);
   }
 
@@ -131,10 +151,7 @@ class TaskService {
     final Map<String, dynamic> data = await _apiClient.post(
       '/tasks/$id/shares',
       token: token,
-      body: <String, dynamic>{
-        'userIds': userIds,
-        'permission': permission,
-      },
+      body: <String, dynamic>{'userIds': userIds, 'permission': permission},
     );
     return _parseTask(data['task']);
   }
@@ -229,10 +246,7 @@ class TaskService {
     if (value is! List) {
       return const <Task>[];
     }
-    return value
-        .whereType<Map<String, dynamic>>()
-        .map(Task.fromJson)
-        .toList();
+    return value.whereType<Map<String, dynamic>>().map(Task.fromJson).toList();
   }
 
   String? _formatDate(DateTime? date) {

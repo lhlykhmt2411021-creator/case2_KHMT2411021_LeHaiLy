@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
+const { TASK_PRIORITIES, TASK_STATUSES } = require('../models/Task');
 const {
+  MAX_SEARCH_LENGTH,
   TASK_SCOPES,
+  TASK_SORT_FIELDS,
   canChangeTaskStatus,
   canEditTask,
   canManageTask,
@@ -60,12 +63,40 @@ async function respondWithTask(res, taskId, userId, statusCode) {
 
 async function listTasks(req, res, next) {
   try {
-    const { scope } = req.query;
+    const { scope, status, priority, q, assigneeId, sortBy, order } = req.query;
     if (scope !== undefined && !TASK_SCOPES.includes(scope)) {
       return res.status(400).json({ message: 'scope không hợp lệ' });
     }
+    if (status !== undefined && !TASK_STATUSES.includes(status)) {
+      return res.status(400).json({ message: 'status không hợp lệ' });
+    }
+    if (priority !== undefined && !TASK_PRIORITIES.includes(priority)) {
+      return res.status(400).json({ message: 'priority không hợp lệ' });
+    }
+    if (sortBy !== undefined && !TASK_SORT_FIELDS.includes(sortBy)) {
+      return res.status(400).json({ message: 'sortBy không hợp lệ' });
+    }
+    if (order !== undefined && !['asc', 'desc'].includes(order)) {
+      return res.status(400).json({ message: 'order không hợp lệ' });
+    }
+    if (assigneeId !== undefined && !mongoose.isValidObjectId(assigneeId)) {
+      return res.status(400).json({ message: 'assigneeId không hợp lệ' });
+    }
+    if (q !== undefined && typeof q === 'string' && q.length > MAX_SEARCH_LENGTH) {
+      return res
+        .status(400)
+        .json({ message: `Từ khóa tìm kiếm không được vượt quá ${MAX_SEARCH_LENGTH} ký tự` });
+    }
 
-    const tasks = await findTasksForUser(req.user._id, scope);
+    const tasks = await findTasksForUser(req.user._id, {
+      scope,
+      status,
+      priority,
+      q: typeof q === 'string' ? q.trim() : undefined,
+      assigneeId,
+      sortBy,
+      order,
+    });
     return res.status(200).json({ tasks: tasks.map(toTaskSummary) });
   } catch (err) {
     return next(err);
