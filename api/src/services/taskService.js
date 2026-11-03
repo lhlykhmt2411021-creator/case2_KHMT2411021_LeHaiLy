@@ -11,6 +11,9 @@ const {
 } = require('./notificationService');
 
 const TASK_SCOPES = ['created', 'assigned', 'shared'];
+const TASK_SORT_FIELDS = ['createdAt', 'dueDate', 'priority', 'title'];
+const PRIORITY_RANK = { low: 1, medium: 2, high: 3 };
+const MAX_SEARCH_LENGTH = 100;
 const STATUS_LABELS = {
   todo: 'Chưa thực hiện',
   in_progress: 'Đang thực hiện',
@@ -34,6 +37,10 @@ function isAssignee(task, userId) {
   return assigned || sameUser(task.primaryAssigneeId, userId);
 }
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function buildListQuery(userId, sharedTaskIds) {
   return {
     $or: [
@@ -45,7 +52,17 @@ function buildListQuery(userId, sharedTaskIds) {
   };
 }
 
-async function findTasksForUser(userId, scope) {
+async function findTasksForUser(userId, options = {}) {
+  const {
+    scope,
+    status,
+    priority,
+    q,
+    assigneeId,
+    sortBy = 'createdAt',
+    order = 'desc',
+  } = options;
+
   let query;
 
   if (scope === 'created') {
@@ -59,10 +76,50 @@ async function findTasksForUser(userId, scope) {
       : buildListQuery(userId, sharedTaskIds);
   }
 
-  return Task.find(query)
-    .sort({ createdAt: -1 })
+  if (status) {
+    query.status = status;
+  }
+  if (priority) {
+    query.priority = priority;
+  }
+  if (q) {
+    const regex = { $regex: escapeRegex(q), $options: 'i' };
+    query.$and = [
+      ...(query.$and || []),
+      { $or: [{ title: regex }, { description: regex }] },
+    ];
+  }
+  if (assigneeId) {
+    query.$and = [
+      ...(query.$and || []),
+      { $or: [{ assigneeIds: assigneeId }, { primaryAssigneeId: assigneeId }] },
+    ];
+  }
+
+  const direction = order === 'asc' ? 1 : -1;
+  const sortField = sortBy === 'priority' ? 'createdAt' : sortBy;
+  const tasks = await Task.find(query)
+    .sort({ [sortField]: sortBy === 'priority' ? -1 : direction })
     .populate('createdBy', 'fullName email')
     .populate('primaryAssigneeId', 'fullName email');
+
+  if (sortBy === 'priority') {
+    tasks.sort((left, right) => {
+      const diff =
+        (PRIORITY_RANK[left.priority] || 0) - (PRIORITY_RANK[right.priority] || 0);
+      if (diff !== 0) {
+        return diff * direction;
+      }
+      return right.createdAt - left.createdAt;
+    });
+  }
+
+  return tasks;
+}
+
+async function buildAccessibleQuery(userId) {
+  const sharedTaskIds = await TaskShare.find({ userId }).distinct('taskId');
+  return buildListQuery(userId, sharedTaskIds);
 }
 
 async function getTaskWithAccess(taskId, userId) {
@@ -440,9 +497,12 @@ async function revokeShare(taskId, actorId, shareId) {
 }
 
 module.exports = {
+  MAX_SEARCH_LENGTH,
   TASK_SCOPES,
+  TASK_SORT_FIELDS,
   addAssignees,
   addShares,
+  buildAccessibleQuery,
   canChangeTaskStatus,
   canEditTask,
   canManageTask,
