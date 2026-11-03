@@ -4,6 +4,7 @@ const taskRoutes = require('./routes/taskRoutes');
 const userRoutes = require('./routes/userRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const emailLogRoutes = require('./routes/emailLogRoutes');
+const statisticsRoutes = require('./routes/statisticsRoutes');
 const { notFoundHandler, errorMiddleware } = require('./middleware/errorMiddleware');
 
 const app = express();
@@ -19,6 +20,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/email-logs', emailLogRoutes);
+app.use('/api/statistics', statisticsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorMiddleware);
